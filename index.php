@@ -6,6 +6,9 @@
 
     });
     session_start();
+    if(empty($_GET['c'])){
+        header("location: ./?c=user&m=index");
+    }
 	$control='';
 	if(isset($_GET['c']))
 	{
