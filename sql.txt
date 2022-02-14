@@ -1,0 +1,1 @@
+Select * From `monster_tab` where 1 

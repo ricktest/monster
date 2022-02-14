@@ -107,7 +107,7 @@
 
             $sql='Select * From `'.$this->table.'` where 1 '.$this->sql_str;
             $obj=$this->db->sqlquery($sql);
-            file_put_contents('./sql.txt',$sql);
+            //file_put_contents('./sql.txt',$sql);
             $this->sql_str='';
             return $this->db->resultarray($obj);
 

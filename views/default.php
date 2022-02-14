@@ -61,61 +61,140 @@ table {
 	<script src="./js/jquery-3.6.0.js"></script>
 	<script>
         $(function(){ 
-        function doAjax(url,data,response =function (response) {
-                    //alert(response);
-                    var obj = jQuery.parseJSON(response);
+
+			var content=function(response) {
+
+				$.each($.parseJSON(response), function (item, value) {
+					$('#content').append("</p>"+value.msg_content+"</p>");
+				});
+				
+			};
+			loaddata();
+			function loaddata(){
+				//alert(localStorage.getItem("sg_id"));
+				if(localStorage.getItem("sg_id")!=null){
+					$(".gamecontent").show();
+					$('#monstername').text(localStorage.getItem("monstername"));
+                	$('#monsterhp').text(localStorage.getItem("monsterhp"));
+					$('#playername').text(localStorage.getItem("playername"));
+					$('#playerhp').text(localStorage.getItem("playerhp"));
+					doAjax('./?c=user&m=content',{ sg_id: localStorage.getItem("sg_id") },content );
+					//localStorage.removeItem("sg_id");
+					if(localStorage.getItem("playerhp")<=0){
+						$("#attack").hide();
+						$("#reset").show();
+					}
+				}
+			
+			}
+
+		
+
+			var startgame = function(response) {
+				//alert(response)
+				var obj = jQuery.parseJSON(response);
+				setloacl(response);
+				showtext(response);
+				$(".gamecontent").show();
+				if(obj.action==1){
+					$('#content').text("");
+				}
+				
+				alert(obj.msg);
+				
+			};
+
+			var resetmonster= function(response) {
+				
+				var obj = jQuery.parseJSON(response);
+				localStorage.setItem('ms_id',obj.monsterid );
+				setloacl(response);
+				showtext(response);
+				
+			}
+			var reset= function(response) {
+
+				var obj = jQuery.parseJSON(response);
+				$("#attack").show();
+				$("#reset").hide();
+				setloacl(response);
+				showtext(response);
+				localStorage.setItem('ms_id',obj.monsterid );
+				history.go(0);
+
+			}
+			var monsterattack=function(response){
+				//alert(response);
+				//alert(response);
+				setloacl(response);
+				showtext(response);
+				var obj = jQuery.parseJSON(response);
+				if(obj.playerhp<=0){
+					$("#attack").hide();
+					$("#reset").show();
 					//alert(obj.msg);
-                    if(obj.action==0){
-						doAjax('./?c=user&m=monsterattack',$('form').serialize() );
-                    }else if(obj.action==2){
-						var result = confirm("怪獸已擊敗，是否還要繼續打怪?");
-						if (result) {
-							doAjax('./?c=user&m=resetmonster',{ resetmonster: "1" } );
-						} else {
-							alert('遊戲結束');
-						}
-					}else if(obj.action==3){
-						$("#attack").hide();
-						$("#reset").show();
-						alert('所有怪獸已擊敗遊戲結束');
-
-					}else if(obj.action==4){
-
-						$("#attack").hide();
-						$("#reset").show();
-					}else if(obj.action==5){
-						$( "#startgame" ).click();
+				}
+				history.go(0);
+			}
+			var attack = function(response) {
+				
+				var obj = jQuery.parseJSON(response);
+				setloacl(response);
+				showtext(response);
+				
+				if(obj.monsterhp<=0){
+					var result = confirm("怪獸已擊敗，是否還要繼續打怪?");
+					if (result) {
+						doAjax('./?c=user&m=resetmonster',{ resetmonster: "1" },resetmonster );
+					} else {
+						$(".gamecontent").hide();
+						localStorage.removeItem("sg_id");
+						alert('遊戲結束');
 					}
-					$('#monstername').text(obj.monstername);
-                    $('#monsterhp').text(obj.monsterhp);
-					$('#playerhp').text(obj.playerhp);
-					$('.recorde').append("<p>"+obj.msg+"</p>");
+				}else{
+					doAjax('./?c=user&m=monsterattack',{ py_hp: localStorage.getItem("playerhp"),ms_id:localStorage.getItem("ms_id") },monsterattack );
+				}
+				//history.go(0);
+			}
+			
+			function setloacl(result){
+				$.each($.parseJSON(result), function (item, value) {
 					
-					if(obj.link!=undefined){
-						
-						document.location.href=obj.link;
-					}
-                }){
-                    $.ajax({
-                    type: "POST",
-                    url: url,
-                    data : data, 
-                    success:response,
-                    error: function (thrownError) {
-                    console.log(thrownError);
-                    }
-            });
-        }
+					localStorage.setItem(item,value );
+				});
+			}
+
+			function showtext(result){
+				var obj = jQuery.parseJSON(result);
+				$('#monstername').text(obj.monstername);
+                $('#monsterhp').text(obj.monsterhp);
+				$('#playername').text(obj.playername);
+				$('#playerhp').text(obj.playerhp);
+			}
+
+			function doAjax(url,data,response){
+						$.ajax({
+						type: "POST",
+						url: url,
+						data : data, 
+						success:response,
+						error: function (thrownError) {
+						console.log(thrownError);
+						}
+				});
+			}
         
     
             $( "#attack" ).click(function() {
-                doAjax('./?c=user&m=playerattack',$('form').serialize() );
+				
+                doAjax('./?c=user&m=playerattack',{ ms_hp: localStorage.getItem("monsterhp"),ms_id:localStorage.getItem("ms_id") },attack);
             });
 			$( "#reset" ).click(function() {
-                doAjax('./?c=user&m=reset',$('form').serialize() );
+				localStorage.removeItem("sg_id");
+                doAjax('./?c=user&m=reset',$('form').serialize(),reset );
             });
 			$( "#startgame" ).click(function() {
-                doAjax('./?c=user&m=startgame',$('form').serialize() );
+                doAjax('./?c=user&m=startgame',{ sg_id: localStorage.getItem("sg_id") },startgame );
             });
             
         }); 
@@ -161,41 +240,37 @@ table {
 		#attack{
 			margin-left:43%;
 		}
+		.text{
+			display: flex;
+			justify-content: center; 
+			align-items: center; 
+		}
 	</style>
 </head>
 <body>
 <div class="container-lg">
 	<button id="startgame" type="button" class="btn btn-primary">開始遊戲</button>
-	<?php if(isset($data['player'][0]['HP'])){?>
-	<div class="gamecontent"  >
+	
+	<div class="gamecontent"  style="display:none;">
 		<div class="player" >
 			<h1>玩家</h1>
-			<p>名字:<?=$data['player'][0]['name']?></p>
-			<p id="playerhp" >血量:<?=$data['player'][0]['HP']?></p>
-			<?php if(count(unserialize($_COOKIE["temp"]))!=10){?>
-			<button style="<?=($data['player'][0]['HP']<=0)?'display:none;':'display:block;'?>" id="attack" type="button" class="btn btn-primary">攻擊</button>
-			<button style="<?=($data['player'][0]['HP']<=0)?'display:block;':'display:none;'?>" id="reset" type="button" class="btn btn-primary">重新玩</button>
-			<?php }else{?>
-			<button style="display:block;" id="reset" type="button" class="btn btn-primary">重新玩</button>
-			<?php }?>
+			<div class="text" >名字:<span id="playername" ></span></div>
+			<div class="text" >血量:<span id="playerhp" ></span></div>
+			<button style="" id="attack" type="button" class="btn btn-primary">攻擊</button>
+			<button style="" id="reset" type="button" class="btn btn-primary">重新玩</button>
 		</div>
-		<div class="recorde">
+		<div class="recorde ">
 			<h1>紀錄</h1>
-			
-			<?php 
-				if(isset($_COOKIE['msg'])){
-					echo $_COOKIE['msg'];
-				}
-			?>
-			
+			<div id="content" style="text-align:center;">
+			</div>
 		</div>
 		<div class="monster">
 			<h1>怪物</h1>
-			<p id="monstername" >名字:<?=$data['singlemonster'][0]['name']?><p>
-			<p id="monsterhp" >血量:<?=$data['singlemonster'][0]['HP']?></p>
+			<div class="text" >名字:<span id="monstername" ><span></div>
+			<div class="text" >血量:<span id="monsterhp" ></span></div>
 		</div>
 	</div>
-	<?php }?>
+	
   <div class="row">
 	<div class="col-12">
 
