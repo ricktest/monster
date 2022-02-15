@@ -6,13 +6,15 @@
 		private $playermodel;
 		private $monstermodel;
 		private $msgmodel;
+		private $register;
+		private $arms;
 
 		private	$temp=[];
 
 		private	$player =[
 			'0'=>['name'=>'player','HP'=>'30','attack'=>'5','exp'=>'']
 		];
-
+		
 		private $monster=[
 			'0'=>['id'=>'0','name'=>'A','HP'=>'10','attack'=>'1'],
 			'1'=>['id'=>'1','name'=>'B','HP'=>'15','attack'=>'3'],
@@ -35,7 +37,10 @@
 			$this->playermodel=$this->Model('player');
 			$this->monstermodel=$this->Model('monster');
 			$this->msgmodel=$this->Model('msg');
+			$this->register=$this->Model('register');
+			$this->arms=$this->Model('arms');
 		}
+
 		function content(){
 			
 			if(isset($_POST['sg_id'])){
@@ -46,155 +51,222 @@
 
 			}
 		}
-		function index(){
-			$this->view('default');
+		
+		public function login(){
+			if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == "POST"){
+
+				if(empty($_POST['rg_acount']) || empty($_POST['rg_pwd']) ){
+					$msgdata['msg']='請輸入帳號、密碼';
+					echo  json_encode($msgdata);
+					return;
+				}
+
+				$users=$this->register->where(['rg_acount'=>$_POST['rg_acount'],'rg_pwd'=>$_POST['rg_pwd']])->SelectData();
+				
+				if(empty($users)){
+					$msgdata['msg']='帳號、密碼錯誤';
+					echo  json_encode($msgdata);
+					return;
+				}
+
+				$_SESSION['user']=$users;
+				$msgdata['link']='./?c=user&m=index';
+				$msgdata['msg']='登入成功';
+				echo  json_encode($msgdata);
+				return;
+			}else{
+				
+				$this->view('login');
+			}
 		}
 
-		public function startgame(){
-			//setcookie( "temp", "", time()-3600);
+		public function register(){
+			
+			if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == "POST"){
+				
+				if(empty($_POST['rg_name'])){
+					$msgdata['msg']='請輸入名字';
+					echo  json_encode($msgdata);
+					return;
+				}
+
+				if($_POST['rg_acount']==''){
+					$msgdata['msg']='請輸入帳號';
+					echo  json_encode($msgdata);
+					return;
+				}
+
+				if($_POST['rg_pwd']==''){
+					$msgdata['msg']='請輸入密碼';
+					echo  json_encode($msgdata);
+					return;
+				}
+
+				if(strlen ($_POST['rg_name']) >=20 || strlen ($_POST['rg_acount'])>=20 || strlen ($_POST['rg_pwd'])>=20 ){
+					$msgdata['msg']='名字、帳號、密碼不得超過20字';
+					echo  json_encode($msgdata);
+					return;
+				}
+
+				$users=$this->register->where(['rg_acount'=>$_POST['rg_acount']])->SelectData();
+				if(isset($users)){
+					$msgdata['msg']='帳號已重複請重新輸入';
+					echo  json_encode($msgdata);
+					return;
+				}
+
+				$data['rg_name']=$_POST['rg_name'];
+				$data['rg_acount']=$_POST['rg_acount'];
+				$data['rg_pwd']=$_POST['rg_pwd'];
+				$data['rg_date']=date('Y-m-d');
+				$this->register->Create($data);
+				$msgdata['msg']='註冊成功';
+				$msgdata['link']='./?c=user&m=login';
+				echo  json_encode($msgdata);
+				return;
+
+			}else{
+				
+				$this->view('register');
+			}
+			
+				
+			
+		}
+
+		function index(){
+			//print_r($_SESSION);
+			$monster=$this->monstermodel->SelectData();
+			$this->view('default',$monster);
+		}
+
+		public function logout(){
+
+			unset($_SESSION["user"]);
+			$msgdata['link']='./?c=user&m=login';
+			echo json_encode($msgdata);
+
+			return TRUE;
+			//header("Location: ./?c=user&m=login"); 
+		}
+
+		public function startgame()
+		{
+			
 			$this->singlemonster=$this->randommonster($this->monstermodel->SelectData());
 			$this->player=$this->playermodel->SelectData();
-			if(empty($_POST['sg_id'])){
+			$MonsterControl=new MonsterControl($this->singlemonster['ms_hp'],$this->singlemonster['ms_attack'],$this->singlemonster['ms_name']);
+			
+			$PlayerControl=new PlayerControl($this->player[0]['py_hp'],$this->player[0]['py_attack'],$this->player[0]['py_name']);
+
+			if(empty($_POST['sg_id']))
+			{
+
 				$data['sg_player_id']=$this->player[0]['py_id'];
 				$data['sg_date']=date('Y-m-d');
 				$this->startgame->Create($data);
-				$msgdata['ms_id']=$this->singlemonster['ms_id'];
-				$msgdata['monstername']=$this->singlemonster['ms_name'];
-				$msgdata['monsterhp']=$this->singlemonster['ms_hp'];
-				$msgdata['playerhp']=$this->player[0]['py_hp'];
-				$msgdata['playername']=$this->player[0]['py_name'];
+				$MonsterControl->setid($this->singlemonster['ms_id']);
+				$msgdata['monster']=$MonsterControl->getAttributes();
+				$msgdata['player']=$PlayerControl->getAttributes();
+				
+
 				$msgdata['sg_id']=$this->startgame->GetMaxId('sg_id');
 				$_SESSION['sg_id']=$msgdata['sg_id'];
 				$msgdata['msg']='遊戲開始';
-				$msgdata['action']='1';
 				echo json_encode($msgdata);
-				return TRUE;
-			}else{
-				$msgdata['msg']='遊戲已開始';
-				
-				echo json_encode($msgdata);
+
 				return TRUE;
 			}
+
+			$msgdata['msg']='遊戲已開始';
+			echo json_encode($msgdata);
+			return TRUE;
+			
 		}
 
 		public function resetmonster(){
 			$this->singlemonster=$this->randommonster($this->monstermodel->SelectData());
 			$this->player=$this->playermodel->SelectData();
-			if(!$this->singlemonster){
-				$msgdata['action']='99';
-				$msgdata['msg']='所有怪獸已擊敗，遊戲結束';
-				echo json_encode($msgdata);
-				return TRUE;
-			}
-
-			$msgdata['monsterid']=$this->singlemonster['ms_id'];
-			$msgdata['monstername']=$this->singlemonster['ms_name'];
-			$msgdata['monsterhp']=$this->singlemonster['ms_hp'];
-			$msgdata['playerhp']=$this->player[0]['py_hp'];
-			$msgdata['playername']=$this->player[0]['py_name'];
-			$msgdata['msg']='遊戲開始';
+			$MonsterControl=new MonsterControl($this->singlemonster['ms_hp'],$this->singlemonster['ms_attack'],$this->singlemonster['ms_name']);
+			
+			$PlayerControl=new PlayerControl($this->player[0]['py_hp'],$this->player[0]['py_attack'],$this->player[0]['py_name']);
+			$MonsterControl->setid($this->singlemonster['ms_id']);
+			$msgdata['monster']=$MonsterControl->getAttributes();
+			$msgdata['player']=$PlayerControl->getAttributes();
 			echo json_encode($msgdata);
 			return TRUE;
 		}
 
 		public function playerattack(){
-			
+
 			$this->singlemonster=$this->monstermodel
 										->where(['ms_id'=>$_POST['ms_id']])
 										->SelectData();
-			$this->player=$this->playermodel->SelectData();
-			$HP=$_POST['ms_hp']-$this->player[0]['py_attack'];
-			
-			if($HP<=0){
-				$msgdata['msg']=$this->singlemonster[0]['ms_name'].'已擊敗，玩家贏得勝利';
-				$msgdata['monstername']=$this->singlemonster[0]['ms_name'];
-				$msgdata['monsterhp']=$HP;
-				$msgdata['playerhp']=$this->player[0]['py_hp'];
-				$msgdata['playername']=$this->player[0]['py_name'];
 
-				$content['msg_sg_id']=$_SESSION['sg_id'];
-				$content['msg_content']=$this->player[0]['py_name'].': 攻擊 '.$this->singlemonster[0]['ms_name'].' 造成傷害 '.$this->player[0]['py_attack'];
-				$this->msgmodel->Create($content);
+			$this->player=$this->playermodel->SelectData();
+			$PlayerControl=new PlayerControl($this->player[0]['py_hp'],$this->player[0]['py_attack'],$this->player[0]['py_name']);
+    		$PlayerControl->setmodel($this->msgmodel);
+			$HP=$PlayerControl->attack($_POST['ms_hp']);
+			$MonsterControl=new MonsterControl($HP,$this->singlemonster[0]['ms_attack'],$this->singlemonster[0]['ms_name']);
+			$arms=$this->arms->where(['as_id'=>$this->singlemonster[0]['ms_as_id']])->Selectdata();
+			if($HP<=0)
+			{
 				
-				$content['msg_content']=$msgdata['msg'];
-				$this->msgmodel->Create($content);
+				$PlayerControl->getmsg($this->singlemonster[0]['ms_name'],TRUE,$_SESSION['sg_id']);
+				$msgdata['msg']=$PlayerControl->getvictorymsg($this->singlemonster[0]['ms_name'],TRUE,$_SESSION['sg_id']);
+				$msgdata['monster']=$MonsterControl->getAttributes();
+				
+				$ArmsControl=new ArmsControl();
+				$msgdata['arms']=$ArmsControl->getarms($arms[0]['as_name']);
+
 				echo json_encode($msgdata);
 				return FALSE;
-			}else{
-
-				$msgdata['msg']=$this->player[0]['py_name'].': 攻擊 '.$this->singlemonster[0]['ms_name'].' 造成傷害 '.$this->player[0]['py_attack'];
-				$msgdata['monsterhp']=$HP;
-				$msgdata['monstername']=$this->singlemonster[0]['ms_name'];
-				//$msgdata['playerhp']=$this->player[0]['py_hp'];
-				//$msgdata['playername']=$this->player[0]['py_name'];
-
-				$content['msg_sg_id']=$_SESSION['sg_id'];
-				$content['msg_content']=$msgdata['msg'];
-				$this->msgmodel->Create($content);
-				echo json_encode($msgdata);
-
-				return TRUE;
 			}
+				
+			$msgdata['monster']=$MonsterControl->getAttributes();
+			$msgdata['msg']=$PlayerControl->getmsg($this->singlemonster[0]['ms_name'],TRUE,$_SESSION['sg_id']);
+
+			
+			echo json_encode($msgdata);
+			return TRUE;
+			
 		}
 
-		function monsterattack(){
+		function monsterattack()
+		{
+
 			$this->singlemonster=$this->monstermodel
 										->where(['ms_id'=>$_POST['ms_id']])
 										->SelectData();
 			$this->player=$this->playermodel->SelectData();
-			$HP=$_POST['py_hp']-$this->singlemonster[0]['ms_attack'];
-			//print_r($_POST);
-			/*$this->player=unserialize($_COOKIE["player"]);
-			$this->singlemonster=unserialize($_COOKIE["singlemonster"]);
-			$HP=$this->player[0]['HP']=$this->player[0]['HP']-$this->singlemonster[0]['attack'];
-			setcookie( "player", serialize($this->player)); */
 			
-			if($HP<=0){
+			$MonsterControl=new MonsterControl($this->singlemonster[0]['ms_hp'],$this->singlemonster[0]['ms_attack'],$this->singlemonster[0]['ms_name']);
+			$MonsterControl->setmodel($this->msgmodel);
+			$HP=$MonsterControl->attack($_POST['py_hp']);
+			$PlayerControl=new PlayerControl($HP,$this->player[0]['py_attack'],$this->player[0]['py_name']);
 
-				$msgdata['msg']=$this->singlemonster[0]['ms_name'].':'.' 攻擊 '.$this->player[0]['py_name'].' 造成傷害 '.$this->singlemonster[0]['ms_attack'].'</br>你已死亡，遊戲結束';
+			if($HP<=0)
+			{
 				
-				$msgdata['playerhp']=$HP;
-				$content['msg_sg_id']=$_SESSION['sg_id'];
-				$content['msg_content']=$msgdata['msg'];
-				$this->msgmodel->Create($content);
-
+				$msgdata['msg']=$MonsterControl->getmsg($this->player[0]['py_name'],TRUE,$_SESSION['sg_id']);
+				$MonsterControl->getvictorymsg($this->player[0]['py_name'],TRUE,$_SESSION['sg_id']);
+				$msgdata['player']=$PlayerControl->getAttributes();
 				echo json_encode($msgdata);
 				return FALSE;
-			}else{
-				$msgdata['msg']=$this->singlemonster[0]['ms_name'].':'.' 攻擊 '.$this->player[0]['py_name'].' 造成傷害 '.$this->singlemonster[0]['ms_attack'];
-				$msgdata['playername']=$this->player[0]['py_name'];
-				$msgdata['playerhp']=$HP;
-				//$msgdata['monsterhp']=$this->singlemonster[0]['ms_hp'];
-				//$msgdata['monstername']=$this->singlemonster[0]['ms_name'];
-
-				$content['msg_sg_id']=$_SESSION['sg_id'];
-				$content['msg_content']=$msgdata['msg'];
-				$this->msgmodel->Create($content);
-
-				echo json_encode($msgdata);
-				return TRUE;
 			}
 
+			$msgdata['msg']=$MonsterControl->getmsg($this->player[0]['py_name'],TRUE,$_SESSION['sg_id']);
+			$msgdata['player']=$PlayerControl->getAttributes();
+			echo json_encode($msgdata);
+			return TRUE;
+			
 		}
 
 		function randommonster($monster){
+
 			$rand=array_rand($monster,1);
 			$mt=$monster[$rand];
-			/*if(isset($_COOKIE["temp"])){
-				$this->temp=unserialize($_COOKIE["temp"]);
-			}
-			$mt=[];
-			while(count($this->temp)<10){
-				$rand=array_rand($monster,1);
-				
-				if(!in_array($monster[$rand]['ms_name'], $this->temp)){
-					$this->temp[] = $monster[$rand]['ms_name'];
-					setcookie( "temp", serialize($this->temp)); 
-					$mt=$monster[$rand];
-					break;
-				}
-			}*/
-			
+		
 			if(count($mt)>0){
 				return $mt;
 			}else{
@@ -204,20 +276,15 @@
 		}
 
 		function reset(){
+
 			$this->singlemonster=$this->randommonster($this->monstermodel->SelectData());
 			$this->player=$this->playermodel->SelectData();
-			$data['sg_player_id']=$this->player[0]['py_id'];
-			$data['sg_date']=date('Y-m-d');
-			$this->startgame->Create($data);
-			$msgdata['monsterid']=$this->singlemonster['ms_id'];
-			$msgdata['monstername']=$this->singlemonster['ms_name'];
-			$msgdata['monsterhp']=$this->singlemonster['ms_hp'];
-			$msgdata['playerhp']=$this->player[0]['py_hp'];
-			$msgdata['playername']=$this->player[0]['py_name'];
-			$msgdata['sg_id']=$this->startgame->GetMaxId('sg_id');
-			$_SESSION['sg_id']=$msgdata['sg_id'];
-			//setcookie( "temp", "", time()-3600);
-			//$msgdata['msg']='重新開始';
+			$MonsterControl=new MonsterControl($this->singlemonster['ms_hp'],$this->singlemonster['ms_attack'],$this->singlemonster['ms_name']);
+			$PlayerControl=new PlayerControl($this->player[0]['py_hp'],$this->player[0]['py_attack'],$this->player[0]['py_name']);
+			$MonsterControl->setid($this->singlemonster['ms_id']);
+			$msgdata['monster']=$MonsterControl->getAttributes();
+			$msgdata['player']=$PlayerControl->getAttributes();
+		
 			echo json_encode($msgdata);
 			return;
 

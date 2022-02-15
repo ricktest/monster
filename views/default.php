@@ -63,11 +63,13 @@ table {
         $(function(){ 
 
 			var content=function(response) {
-
+				var text='';
 				$.each($.parseJSON(response), function (item, value) {
-					$('#content').append("</p>"+value.msg_content+"</p>");
+					//alert(value.msg_content);
+					text+="</p>"+value.msg_content+"</p>";
+					
 				});
-				
+				$('#content').html(text);
 			};
 			loaddata();
 			function loaddata(){
@@ -78,8 +80,11 @@ table {
                 	$('#monsterhp').text(localStorage.getItem("monsterhp"));
 					$('#playername').text(localStorage.getItem("playername"));
 					$('#playerhp').text(localStorage.getItem("playerhp"));
+					$('#playerattack').text("1~"+localStorage.getItem("playerattack"));
+					$('#monsterattack').text("1~"+localStorage.getItem("monsterattack"));
+
 					doAjax('./?c=user&m=content',{ sg_id: localStorage.getItem("sg_id") },content );
-					//localStorage.removeItem("sg_id");
+					
 					if(localStorage.getItem("playerhp")<=0){
 						$("#attack").hide();
 						$("#reset").show();
@@ -91,58 +96,83 @@ table {
 		
 
 			var startgame = function(response) {
-				//alert(response)
+				//alert(localStorage.getItem("sg_id" ));
 				var obj = jQuery.parseJSON(response);
-				setloacl(response);
-				showtext(response);
-				$(".gamecontent").show();
-				if(obj.action==1){
+				if(localStorage.getItem("sg_id" )==null){
+					
+					setplayer(response);
+					setmonster(response);
+					showplayer(response);
+					showmonster(response);
+					localStorage.setItem("sg_id",obj.sg_id );
+					$('#playerattack').text("1~"+obj.player.playerattack);
+					$('#monsterattack').text("1~"+obj.monster.monsterattack);
+					$(".gamecontent").show();
 					$('#content').text("");
+					
 				}
+				
 				
 				alert(obj.msg);
 				
 			};
-
+			
 			var resetmonster= function(response) {
 				
 				var obj = jQuery.parseJSON(response);
-				localStorage.setItem('ms_id',obj.monsterid );
-				setloacl(response);
-				showtext(response);
 				
+				setplayer(response);
+				setmonster(response);
+				showplayer(response);
+				showmonster(response);
+				
+				doAjax('./?c=user&m=content',{ sg_id: localStorage.getItem("sg_id") },content );
+
 			}
 			var reset= function(response) {
-
+				
 				var obj = jQuery.parseJSON(response);
 				$("#attack").show();
 				$("#reset").hide();
-				setloacl(response);
-				showtext(response);
-				localStorage.setItem('ms_id',obj.monsterid );
-				history.go(0);
+				setplayer(response);
+				setmonster(response);
+				showplayer(response);
+				showmonster(response);
+				
+				doAjax('./?c=user&m=content',{ sg_id: localStorage.getItem("sg_id") },content );
 
 			}
 			var monsterattack=function(response){
-				//alert(response);
-				//alert(response);
-				setloacl(response);
-				showtext(response);
+				
+				setplayer(response);
+				showplayer(response);
+				
 				var obj = jQuery.parseJSON(response);
-				if(obj.playerhp<=0){
+				$('#playerattack').text("1~"+localStorage.getItem("playerattack"));
+				$('#monsterattack').text("1~"+localStorage.getItem("monsterattack"));
+				if(obj.player.playerhp<=0){
 					$("#attack").hide();
 					$("#reset").show();
-					//alert(obj.msg);
 				}
-				history.go(0);
+				doAjax('./?c=user&m=content',{ sg_id: localStorage.getItem("sg_id") },content );
 			}
-			var attack = function(response) {
-				
+			var logout = function(response) {
 				var obj = jQuery.parseJSON(response);
-				setloacl(response);
-				showtext(response);
-				
-				if(obj.monsterhp<=0){
+				document.location.href=obj.link;
+			}
+			
+
+			var attack = function(response) {
+				//alert(response);
+				var obj = jQuery.parseJSON(response);
+				setmonster(response);
+				showmonster(response);
+				$('#playerattack').text("1~"+localStorage.getItem("playerattack"));
+				$('#monsterattack').text("1~"+localStorage.getItem("monsterattack"));
+				if(obj.monster.monsterhp<=0){
+					if(obj.arms.as_name!=null){
+						alert("得到"+obj.arms.as_name);
+					}
 					var result = confirm("怪獸已擊敗，是否還要繼續打怪?");
 					if (result) {
 						doAjax('./?c=user&m=resetmonster',{ resetmonster: "1" },resetmonster );
@@ -153,24 +183,40 @@ table {
 					}
 				}else{
 					doAjax('./?c=user&m=monsterattack',{ py_hp: localStorage.getItem("playerhp"),ms_id:localStorage.getItem("ms_id") },monsterattack );
-				}
-				//history.go(0);
+				}	
 			}
 			
-			function setloacl(result){
-				$.each($.parseJSON(result), function (item, value) {
-					
-					localStorage.setItem(item,value );
-				});
+			function setmonster(response){
+				var obj = jQuery.parseJSON(response);
+				localStorage.setItem("monsterattack",obj.monster.monsterattack );
+				localStorage.setItem("monsterhp",obj.monster.monsterhp );
+				localStorage.setItem("monstername",obj.monster.monstername );
+				if(obj.monster.ms_id!=null){
+					localStorage.setItem("ms_id",obj.monster.ms_id );
+				}
+				
 			}
 
-			function showtext(result){
-				var obj = jQuery.parseJSON(result);
-				$('#monstername').text(obj.monstername);
-                $('#monsterhp').text(obj.monsterhp);
-				$('#playername').text(obj.playername);
-				$('#playerhp').text(obj.playerhp);
+			function showmonster(response){
+				var obj = jQuery.parseJSON(response);
+				$('#monstername').text(obj.monster.monstername);
+                $('#monsterhp').text(obj.monster.monsterhp);
 			}
+
+			function setplayer(response){
+				var obj = jQuery.parseJSON(response);
+				localStorage.setItem("playerattack",obj.player.playerattack );
+				localStorage.setItem("playerhp",obj.player.playerhp );
+				localStorage.setItem("playrname",obj.player.playrname );
+			}
+
+			function showplayer(response){
+				var obj = jQuery.parseJSON(response);
+				$('#playername').text(obj.player.playername);
+                $('#playerhp').text(obj.player.playerhp);
+			}
+
+			
 
 			function doAjax(url,data,response){
 						$.ajax({
@@ -190,17 +236,24 @@ table {
                 doAjax('./?c=user&m=playerattack',{ ms_hp: localStorage.getItem("monsterhp"),ms_id:localStorage.getItem("ms_id") },attack);
             });
 			$( "#reset" ).click(function() {
-				localStorage.removeItem("sg_id");
+				
                 doAjax('./?c=user&m=reset',$('form').serialize(),reset );
             });
+
 			$( "#startgame" ).click(function() {
                 doAjax('./?c=user&m=startgame',{ sg_id: localStorage.getItem("sg_id") },startgame );
             });
-            
+
+            $( "#logout" ).click(function() {
+                doAjax('./?c=user&m=logout',{ sg_id: localStorage.getItem("sg_id") },logout );
+            });
         }); 
     </script>
 	<style>
-		#startgame{
+		#startgame {
+			margin-top:50px;
+		}
+		#logout{
 			margin-top:50px;
 		}
 		#reset{
@@ -250,17 +303,18 @@ table {
 <body>
 <div class="container-lg">
 	<button id="startgame" type="button" class="btn btn-primary">開始遊戲</button>
-	
+	<button id="logout" type="button" class="btn btn-primary">登出</button>
 	<div class="gamecontent"  style="display:none;">
 		<div class="player" >
 			<h1>玩家</h1>
 			<div class="text" >名字:<span id="playername" ></span></div>
 			<div class="text" >血量:<span id="playerhp" ></span></div>
+			<div class="text" >攻擊力:<span id="playerattack" ></span></div>
 			<button style="" id="attack" type="button" class="btn btn-primary">攻擊</button>
 			<button style="" id="reset" type="button" class="btn btn-primary">重新玩</button>
 		</div>
 		<div class="recorde ">
-			<h1>紀錄</h1>
+			
 			<div id="content" style="text-align:center;">
 			</div>
 		</div>
@@ -268,17 +322,20 @@ table {
 			<h1>怪物</h1>
 			<div class="text" >名字:<span id="monstername" ><span></div>
 			<div class="text" >血量:<span id="monsterhp" ></span></div>
+			<div class="text" >攻擊力:<span id="monsterattack" ></span></div>
+			所有怪物資訊:
+			<?php 
+				foreach($data as $k=>$v){
+					echo '<div class="text" ><span>名字:'.$v['ms_name'].' 血量:'.$v['ms_hp'].' 攻擊力:'.$v['ms_attack'].'</span></div>';
+				}
+			?>
 		</div>
 	</div>
 	
   <div class="row">
 	<div class="col-12">
-
-		
 		<div id="msgcontent">
-
 		</div>
-		
 	</div>
   </div>
 </div>

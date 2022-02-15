@@ -6,8 +6,8 @@
 
     });
     session_start();
-    if(empty($_GET['c'])){
-        header("location: ./?c=user&m=index");
+    if(empty($_GET['c']) || ( empty($_SESSION['user']) && $_GET['m']=='index')){
+        header("location: ./?c=user&m=login");
     }
 	$control='';
 	if(isset($_GET['c']))

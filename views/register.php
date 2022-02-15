@@ -9,21 +9,21 @@
 	<link href="./bootstrap-5.1.3-dist/css/bootstrap.min.css" rel="stylesheet" >
 	<script src="./js/jquery-3.6.0.js"></script>
 	<script>
-            $(function(){ 
+        $(function(){ 
 
-                function doAjax(url,data,response){
-                $.ajax({
-                type: "POST",
-                url: url,
-                data : data, 
-                success:response,
-                error: function (thrownError) {
-                console.log(thrownError);
-                }
-            });
-          }
+            function doAjax(url,data,response){
+						$.ajax({
+						type: "POST",
+						url: url,
+						data : data, 
+						success:response,
+						error: function (thrownError) {
+						console.log(thrownError);
+						}
+				});
+			}
 
-            var login=function(response){
+            var register=function(response){
                 //alert(response);
                 var obj = jQuery.parseJSON(response);
                 if(obj.link!=undefined){
@@ -32,8 +32,8 @@
                 alert(obj.msg);
             }
 
-			$( ".btnlogin" ).click(function() {
-                doAjax('./?c=user&m=login',$('form').serialize(),login );
+			$( ".btnregister" ).click(function() {
+                doAjax('./?c=user&m=register',$('form').serialize(),register );
             });
             
         }); 
@@ -42,11 +42,11 @@
 <body>
 <div class="container-lg">
 	 <form action="" method="post" class="form" >
-        
+        <span>名字</span><input type="text" name="rg_name" value="">
         <span>帳號</span><input type="text" name="rg_acount" value="">
         <span>密碼</span><input type="text" name="rg_pwd" value="" >
-        <input type="button" value="登入" class="btnlogin">
-        <a href="./?c=user&m=register"><input type="button" value="註冊"></a>
+        <input type="button" value="註冊" class="btnregister">
+        <a href="./?c=user&m=login"><input type="button" value="登入"></a>
     </form>
 </div>
 </body>
