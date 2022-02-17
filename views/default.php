@@ -71,49 +71,53 @@ table {
 				});
 				$('#content').html(text);
 			};
+
+			var load=function(response) {
+				var obj = jQuery.parseJSON(response);
+				//alert(response);
+				if(obj.action=='1'){
+					$(".gamecontent").show();
+				}
+				if(obj.player.playerhp<=0){
+					$("#attack").hide();
+					$("#attack1").hide();
+					$("#reset").show();
+				}
+				setplayer(response);
+				setmonster(response);
+				showplayer(response);
+				showmonster(response);
+				$('#playerattack').text("1~"+obj.player.playerattack);
+				$('#monsterattack').text("1~"+obj.monster.monsterattack);
+			};
+			
 			loaddata();
 			function loaddata(){
-				//alert(localStorage.getItem("sg_id"));
-				if(localStorage.getItem("sg_id")!=null){
-					$(".gamecontent").show();
-					$('#monstername').text(localStorage.getItem("monstername"));
-                	$('#monsterhp').text(localStorage.getItem("monsterhp"));
-					$('#playername').text(localStorage.getItem("playername"));
-					$('#playerhp').text(localStorage.getItem("playerhp"));
-					$('#playerattack').text("1~"+localStorage.getItem("playerattack"));
-					$('#monsterattack').text("1~"+localStorage.getItem("monsterattack"));
-
-					doAjax('./?c=user&m=content',{ sg_id: localStorage.getItem("sg_id") },content );
-					
-					if(localStorage.getItem("playerhp")<=0){
-						$("#attack").hide();
-						$("#reset").show();
-					}
-				}
-			
+				$(".gamecontent").hide();
+				doAjax('./?c=user&m=load',{ load: "1" },load );
+				doAjax('./?c=user&m=content',{ sg_id: "" },content );
 			}
 
 		
-
 			var startgame = function(response) {
+				//alert(response);
 				//alert(localStorage.getItem("sg_id" ));
 				var obj = jQuery.parseJSON(response);
-				if(localStorage.getItem("sg_id" )==null){
-					
+				if(obj.action=='1'){
 					setplayer(response);
 					setmonster(response);
 					showplayer(response);
 					showmonster(response);
-					localStorage.setItem("sg_id",obj.sg_id );
 					$('#playerattack').text("1~"+obj.player.playerattack);
 					$('#monsterattack').text("1~"+obj.monster.monsterattack);
 					$(".gamecontent").show();
 					$('#content').text("");
-					
+
+				}else{
+					alert(obj.msg);
 				}
 				
 				
-				alert(obj.msg);
 				
 			};
 			
@@ -133,6 +137,7 @@ table {
 				
 				var obj = jQuery.parseJSON(response);
 				$("#attack").show();
+				$("#attack1").show();
 				$("#reset").hide();
 				setplayer(response);
 				setmonster(response);
@@ -152,6 +157,7 @@ table {
 				$('#monsterattack').text("1~"+localStorage.getItem("monsterattack"));
 				if(obj.player.playerhp<=0){
 					$("#attack").hide();
+					$("#attack1").hide();
 					$("#reset").show();
 				}
 				doAjax('./?c=user&m=content',{ sg_id: localStorage.getItem("sg_id") },content );
@@ -161,7 +167,10 @@ table {
 				document.location.href=obj.link;
 			}
 			
-
+			var endgame=function(response) {
+				var obj = jQuery.parseJSON(response);
+				alert(obj.msg);
+			}
 			var attack = function(response) {
 				//alert(response);
 				var obj = jQuery.parseJSON(response);
@@ -178,8 +187,8 @@ table {
 						doAjax('./?c=user&m=resetmonster',{ resetmonster: "1" },resetmonster );
 					} else {
 						$(".gamecontent").hide();
-						localStorage.removeItem("sg_id");
-						alert('遊戲結束');
+						doAjax('./?c=user&m=endgame',{ endgame: "1" },endgame );
+						
 					}
 				}else{
 					doAjax('./?c=user&m=monsterattack',{ py_hp: localStorage.getItem("playerhp"),ms_id:localStorage.getItem("ms_id") },monsterattack );
@@ -224,16 +233,26 @@ table {
 						url: url,
 						data : data, 
 						success:response,
+						beforeSend: function () {
+							$('#loading').css("display", "");
+						},
+						complete: function () {
+							//再次隱藏
+							$('#loading').css("display", "none"); 
+						},
 						error: function (thrownError) {
-						console.log(thrownError);
+							console.log(thrownError);
 						}
 				});
 			}
-        
-    
+			$( "#attack1" ).click(function() {
+				
+                doAjax('./?c=user&m=playerattack',{ ms_hp: localStorage.getItem("monsterhp"),ms_id:localStorage.getItem("ms_id"),skill:"Skill1" },attack);
+            });
+			
             $( "#attack" ).click(function() {
 				
-                doAjax('./?c=user&m=playerattack',{ ms_hp: localStorage.getItem("monsterhp"),ms_id:localStorage.getItem("ms_id") },attack);
+                doAjax('./?c=user&m=playerattack',{ ms_hp: localStorage.getItem("monsterhp"),ms_id:localStorage.getItem("ms_id"),skill:"Attack" },attack);
             });
 			$( "#reset" ).click(function() {
 				
@@ -311,6 +330,7 @@ table {
 			<div class="text" >血量:<span id="playerhp" ></span></div>
 			<div class="text" >攻擊力:<span id="playerattack" ></span></div>
 			<button style="" id="attack" type="button" class="btn btn-primary">攻擊</button>
+			<button style="" id="attack1" type="button" class="btn btn-primary">技能1</button>
 			<button style="" id="reset" type="button" class="btn btn-primary">重新玩</button>
 		</div>
 		<div class="recorde ">
@@ -331,13 +351,38 @@ table {
 			?>
 		</div>
 	</div>
-	
-  <div class="row">
-	<div class="col-12">
-		<div id="msgcontent">
-		</div>
-	</div>
-  </div>
+	<style>
+		div.loadingdiv {
+			height: 100%;
+			width: 100%;
+			/*100%覆蓋網頁內容, 避免user在loading時進行其他操作*/
+			position: fixed;
+			z-index: 99999;
+			/*須大於網頁內容*/
+			top: 0;
+			left: 0;
+			display: block;
+			background: #000;
+			opacity: 0.6;
+			text-align: center;
+		}
+
+		div.loadingdiv img {
+			position: relative;
+			vertical-align: middle;
+			text-align: center;
+			margin: 0 auto;
+			margin-top: 20vh;
+		}
+
+		
+	</style>
+	<div class="loadingdiv" id="loading" style="display: none">
+        <img src="./1.gif" />     
+ 	</div>
+
+
+
 </div>
 </body>
 </html>

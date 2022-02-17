@@ -55,7 +55,10 @@
             $data['monstername']=$this->monstername;
             $data['monsterattack']=$this->monsterattack;
             $data['ms_id']=$this->getid();
-
+            require_once './models/monstersave.php';
+            $datasave['ms_json']=json_encode($data);
+            $monstersave=new monstersave();
+            $monstersave->set($datasave)->where(['ms_sg_id'=>$_SESSION['sg_id']])->Update();
             return $data;
             
         }

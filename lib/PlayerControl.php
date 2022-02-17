@@ -8,6 +8,7 @@
         private $msg;
         private $attack;
         private $model;
+        private $skillmsg;
 
         public function __construct($playerhp,$playerattack,$playername)
 		{
@@ -16,47 +17,43 @@
             $this->playername=$playername;
         }
         
-        public function attack($monsterhp)
+        public function attack(Skill $skill)
         {
-            $aftermonsterhp=$monsterhp-$this->attackrange();
-            if($aftermonsterhp<=0){
-                $aftermonsterhp=0;
-            }
-            return $aftermonsterhp;
+            
+            $hp=$skill->gethp();
+            $this->attack=$skill->getattack();
+            $this->skillmsg=$skill->getmsg();
+
+            return $hp;
         }
 
-        public function getattack(){
-            return $this->attack;
-        }
-
-        private function attackrange()
-        {
-
-            $rangetake= range(1,$this->playerattack);
-            $rand=array_rand($rangetake,1);
-            $this->attack=$rangetake[$rand];
-            return $this->attack;
-
-        }
-
+        
         public function getAttributes(){
 
             $data['playerhp']=$this->playerhp;
             $data['playername']=$this->playername;
             $data['playerattack']=$this->playerattack;
-            
+
+            require_once './models/playersave.php';
+            $datasave['ps_json']=json_encode($data);
+            $playersave=new playersave();
+            $playersave->set($datasave)->where(['ps_sg_id'=>$_SESSION['sg_id']])->Update();
             return $data;
             
         }
 
         public function getmsg($monstername,$record=FALSE,$sg_id=''){
 
-            $this->msg=$this->playername.': 攻擊 '.$monstername.' 造成傷害 '.$this->attack;
+            $this->msg='<span style="color:red;" >'.$this->playername.': '.$this->skillmsg.' '.$monstername.' 造成傷害 '.$this->attack.'</span>';
+
             if($record){
+
                 $content['msg_sg_id']=$sg_id;
 				$content['msg_content']=$this->msg;
                 $this->model->Create($content);
+
             }
+
             return $this->msg;
 
         }

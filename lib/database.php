@@ -20,12 +20,12 @@
         }
 
         function sqlquery($sql){
-
+            //echo $sql;
             return $this->con->query($sql);
           
         }
         function resultarray($obj_data){
-            $arr_data=null;
+            $arr_data=[];
             while($result=mysqli_fetch_assoc($obj_data)){
                 $arr_data[]=$result;
             }
