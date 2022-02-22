@@ -148,7 +148,7 @@ table {
 
 			}
 			var monsterattack=function(response){
-				
+				//alert(response);
 				setplayer(response);
 				showplayer(response);
 				
@@ -234,7 +234,7 @@ table {
 						data : data, 
 						success:response,
 						beforeSend: function () {
-							$('#loading').css("display", "");
+							//$('#loading').css("display", "");
 						},
 						complete: function () {
 							//再次隱藏

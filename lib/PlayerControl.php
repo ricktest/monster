@@ -1,5 +1,21 @@
 <?php 
-    Class PlayerControl
+    interface Observable
+    {
+        // 新增/註冊觀察者
+        public function attach(Observer $observer);
+        // 刪除觀察者
+        public function detach(Observer $observer);
+        // 觸發通知
+        public function notify();
+    }
+
+    interface Observer
+    {
+        // 接收到通知的處理方法
+        public function update(Observable $observable);
+    }
+
+    Class PlayerControl implements Observable
     {
 
         private $playerhp;
@@ -9,6 +25,7 @@
         private $attack;
         private $model;
         private $skillmsg;
+        private $observers = array();
 
         public function __construct($playerhp,$playerattack,$playername)
 		{
@@ -33,49 +50,110 @@
             $data['playerhp']=$this->playerhp;
             $data['playername']=$this->playername;
             $data['playerattack']=$this->playerattack;
+           
 
-            require_once './models/playersave.php';
-            $datasave['ps_json']=json_encode($data);
-            $playersave=new playersave();
-            $playersave->set($datasave)->where(['ps_sg_id'=>$_SESSION['sg_id']])->Update();
             return $data;
             
         }
 
-        public function getmsg($monstername,$record=FALSE,$sg_id=''){
+        public function getSkill(){
 
-            $this->msg='<span style="color:red;" >'.$this->playername.': '.$this->skillmsg.' '.$monstername.' 造成傷害 '.$this->attack.'</span>';
+            return $this->skillmsg;
 
-            if($record){
+        }
 
-                $content['msg_sg_id']=$sg_id;
-				$content['msg_content']=$this->msg;
-                $this->model->Create($content);
+        public function getAttack(){
 
-            }
+            return $this->attack;
+
+        }
+
+        public function getmsg(){
 
             return $this->msg;
 
         }
 
-        public function getvictorymsg($monstername,$record=FALSE,$sg_id=''){
 
-            $this->msg=$monstername.'已擊敗，玩家贏得勝利';
-            if($record){
-                $content['msg_sg_id']=$sg_id;
-				$content['msg_content']=$this->msg;
-                $this->model->Create($content);
-            }
-            return $this->msg;
+        public function setMsg(String $msg){
+
+            $this->msg=$msg;
 
         }
 
-        public function setmodel($model){
+        public function attach(Observer $observer)
+        {
+            $key = array_search($observer, $this->observers);
+            if ($key === false) {
+                $this->observers[] = $observer;
+            }
+        }
 
+        // 移除觀察者
+        public function detach(Observer $observer)
+        {
+            $key = array_search($observer, $this->observers);
+            if ($key !== false) {
+                unset($this->observers[$key]);
+            }
+        }
+
+        // 遍歷呼叫觀察者的update()方法進行通知，不關心其具體實現方式
+        public function notify()
+        {
+            foreach ($this->observers as $observer) {
+                // 把本類物件傳給觀察者，以便觀察者獲取當前類物件的資訊
+                $observer->update($this);
+            }
+        }
+
+    }
+
+    class playersLog implements Observer
+    {
+        private $model;
+
+        public function __construct(Model $model)
+        {
             $this->model=$model;
-
         }
 
+        public function update(Observable $observable)
+        {
+            $data = $observable->getAttributes();
+            if (!empty($data)) {
+                $datasave['ps_json']=json_encode($data);
+                $this->model->set($datasave)->where(['ps_sg_id'=>$_SESSION['sg_id']])->Update();
+
+            } else {
+                
+            }
+        }
+    }
+
+    class msgRecord implements Observer
+    {
+        private $model;
+        private $name;
+        private $type;
+
+        public function __construct(Model $model)
+        {
+            $this->model=$model;
+           
+        }
+
+        public function update(Observable $observable)
+        {
+            $data = $observable->getmsg();
+            if (!empty($data)) {
+                $content['msg_sg_id']=$_SESSION['sg_id'];
+				$content['msg_content']=$data;
+                $this->model->Create($content);
+            } else {
+                
+            }
+        }
     }
 
 ?>

@@ -1,1 +1,1 @@
-Select * From `msg_tab` where 1  AND `msg_sg_id`='2' ORDER BY `msg_id` DESC
+Select * From `playersave_tab` where 1  AND `ps_sg_id`='1'
